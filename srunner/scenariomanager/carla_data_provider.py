@@ -536,6 +536,12 @@ class CarlaActorPool(object):
         FutureActor = carla.command.FutureActor     # pylint: disable=invalid-name
 
         blueprint_library = CarlaActorPool._world.get_blueprint_library()
+        # Get vehicle by model
+        blueprints = blueprint_library.filter(model)
+        # Remove bikes
+        blueprints = [x for x in blueprints if not x.id == 'vehicle.diamondback.century']
+        blueprints = [x for x in blueprints if not x.id == 'vehicle.gazelle.omafiets']
+        blueprints = [x for x in blueprints if not x.id == 'vehiclebh.crossbike']
 
         if not hero:
             hero_actor = CarlaActorPool.get_hero_actor()
@@ -543,8 +549,8 @@ class CarlaActorPool(object):
             hero_actor = None
         batch = []
         for _ in range(amount):
-            # Get vehicle by model
-            blueprint = random.choice(blueprint_library.filter(model))
+
+            blueprint = random.choice(blueprints)
             # is it a pedestrian? -> make it mortal
             if blueprint.has_attribute('is_invincible'):
                 blueprint.set_attribute('is_invincible', 'false')
