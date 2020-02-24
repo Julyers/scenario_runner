@@ -225,25 +225,58 @@ class CarlaDataProvider(object):
         """
         Get dictionary with traffic light group info for a given traffic light
         """
+
+        def get_trafficlight_trigger_waypoint(traffic_light):
+            """
+            Calculates the yaw of the waypoint that represents the trigger volume of the traffic light
+            """
+            def rotate_point(point, angle):
+                """
+                rotate a given point by a given angle
+                """
+                x_ = math.cos(math.radians(angle)) * point.x - math.sin(math.radians(angle)) * point.y
+                y_ = math.sin(math.radians(angle)) * point.x - math.cos(math.radians(angle)) * point.y
+
+                return carla.Vector3D(x_, y_, point.z)
+
+            base_transform = traffic_light.get_transform()
+            base_rot = base_transform.rotation.yaw
+            area_loc = base_transform.transform(traffic_light.trigger_volume.location)
+            area_ext = traffic_light.trigger_volume.extent
+
+            point = rotate_point(carla.Vector3D(0, 0, area_ext.z), base_rot)
+            point_location = area_loc + carla.Location(x=point.x, y=point.y)
+            waypoint = CarlaDataProvider.get_map().get_waypoint(point_location)
+
+            return waypoint
+
         dict_annotations = {'ref': [], 'opposite': [], 'left': [], 'right': []}
 
-        ref_yaw = traffic_light.get_transform().rotation.yaw
+        # Get the waypoints
+        ref_waypoint = get_trafficlight_trigger_waypoint(traffic_light)
+        ref_yaw = ref_waypoint.transform.rotation.yaw
+
         group_tl = traffic_light.get_group_traffic_lights()
         for target_tl in group_tl:
-            target_yaw = target_tl.get_transform().rotation.yaw
-            diff = target_yaw - ref_yaw
-            if diff < 0.0:
-                diff = 360.0 + diff
-
-            if diff <= 45.0 or diff > 320.0:
+            if traffic_light.id == target_tl.id:
                 dict_annotations['ref'].append(target_tl)
-            elif diff > 240 and diff <= 320:
-                dict_annotations['right'].append(target_tl)
-            elif diff > 160.0 and diff <= 240.0:
-                dict_annotations['opposite'].append(target_tl)
             else:
-                dict_annotations['left'].append(target_tl)
+                # Get the angle between yaws
+                target_waypoint = get_trafficlight_trigger_waypoint(target_tl)
+                target_yaw = target_waypoint.transform.rotation.yaw
+                diff = (target_yaw - ref_yaw) % 360
 
+                if diff > 315:
+                    continue
+                elif diff > 225:
+                    dict_annotations['right'].append(target_tl)
+                    
+                elif diff > 135.0:
+                    dict_annotations['opposite'].append(target_tl)
+                    
+                elif diff > 45:
+                    dict_annotations['left'].append(target_tl)
+                    
         return dict_annotations
 
     @staticmethod
