@@ -75,7 +75,7 @@ class ScenarioRunner(object):
     ego_vehicles = []
 
     # Tunable parameters
-    client_timeout = 30.0  # in seconds
+    client_timeout = 2.0   # in seconds
     wait_for_world = 20.0  # in seconds
     frame_rate = 20.0      # in Hz
 
@@ -94,6 +94,9 @@ class ScenarioRunner(object):
         Setup ScenarioManager
         """
         self._args = args
+
+        if args.timeout:
+            self.client_timeout = float(args.timeout)
 
         # First of all, we need to create the client that will send the requests
         # to the simulator. Here we'll assume the simulator is accepting
@@ -120,7 +123,7 @@ class ScenarioRunner(object):
             self.module_agent = importlib.import_module(module_name)
 
         # Create the ScenarioManager
-        self.manager = ScenarioManager(self._args.debug, self._args.challenge)
+        self.manager = ScenarioManager(self._args.debug, self._args.challenge, self._args.timeout)
 
         # Create signal handler for SIGINT
         self._shutdown_requested = False
@@ -573,6 +576,8 @@ def main():
     parser.add_argument('--challenge', action="store_true", help='Run in challenge mode')
     parser.add_argument('--record', action="store_true",
                         help='Use CARLA recording feature to create a recording of the scenario')
+    parser.add_argument('--timeout', default="2.0",
+                        help='Set the CARLA client timeout value in seconds')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + str(VERSION))
     arguments = parser.parse_args()
     # pylint: enable=line-too-long
