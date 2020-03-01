@@ -204,7 +204,38 @@ class OpenScenarioParser(object):
         elif position.find('RelativeRoad') is not None:
             raise NotImplementedError("RelativeRoad positions are not yet supported")
         elif position.find('Lane') is not None:
-            raise NotImplementedError("Lane positions are not yet supported")
+            lane_pos = position.find('Lane')
+            road_id = int(lane_pos.attrib.get('roadId', 0))
+            lane_id = int(lane_pos.attrib.get('laneId', 0))
+            offset = float(lane_pos.attrib.get('offset', 0))
+            s = float(lane_pos.attrib.get('s', 0))
+            if lane_pos.find('Orientation') is not None:
+                orientation = rel_pos.find('Orientation')
+                is_absolute = (orientation.attrib.get('type') == "absolute")
+                dyaw = math.degrees(float(orientation.attrib.get('h', 0)))
+                dpitch = math.degrees(float(orientation.attrib.get('p', 0)))
+                droll = math.degrees(float(orientation.attrib.get('r', 0)))
+            waypoint = CarlaDataProvider.get_map().get_waypoint_xodr(road_id, lane_id, s)
+            if waypoint is None:
+                raise AttributeError("Lane position cannot be found")
+            
+            transform = waypoint.transform
+            if not OpenScenarioParser.use_carla_coordinate_system:
+                dyaw = dyaw * (-1.0)
+
+            if not is_absolute:
+                transform.rotation.yaw = transform.rotation.yaw + dyaw
+                transform.rotation.pitch = transform.rotation.pitch + dpitch
+                transform.rotation.roll = transform.rotation.roll + droll
+            else:
+                transform.rotation.yaw = dyaw
+                transform.rotation.pitch = dpitch
+                transform.rotation.roll = droll
+            
+            if offset != 0:
+                print("Warning: Offset !=0 currently not supported")
+            
+            return transform
         elif position.find('Route') is not None:
             raise NotImplementedError("Route positions are not yet supported")
         else:
